@@ -1,0 +1,458 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding: 40px;
+}
+
+h1 {
+    color: #333;
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 2.5em;
+}
+
+.subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 30px;
+    font-size: 1.1em;
+}
+
+/* Season Selector Styles */
+.season-selector {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.season-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.season-controls label {
+    font-weight: 600;
+    color: #333;
+}
+
+.season-controls select {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 1em;
+    background: white;
+}
+
+.season-controls select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.btn-new-season {
+    padding: 10px 20px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.btn-new-season:hover {
+    background: #5568d3;
+}
+
+.btn-delete-season {
+    padding: 10px 20px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.btn-delete-season:hover {
+    background: #dc2626;
+}
+
+/* Dialog Styles */
+.dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.dialog.hidden {
+    display: none;
+}
+
+.dialog-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+}
+
+.dialog-content h3 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.error-message {
+    display: none;
+    padding: 12px;
+    margin-bottom: 15px;
+    background-color: #fee;
+    border: 1px solid #fcc;
+    border-radius: 6px;
+    color: #c33;
+    font-size: 0.95em;
+}
+
+.error-message.show {
+    display: block;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 1em;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.form-group input[readonly] {
+    background-color: #f5f5f5;
+    cursor: default;
+}
+
+.dialog-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 25px;
+}
+
+.btn-primary {
+    padding: 10px 25px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.btn-primary:hover {
+    background: #5568d3;
+}
+
+.btn-secondary {
+    padding: 10px 25px;
+    background: #e0e0e0;
+    color: #333;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.btn-secondary:hover {
+    background: #d0d0d0;
+}
+
+.btn-delete {
+    padding: 10px 25px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.btn-delete:hover {
+    background: #dc2626;
+}
+
+.info-box {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.info-item {
+    background: #f0f4ff;
+    padding: 15px 25px;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+.info-item strong {
+    color: #667eea;
+}
+
+.buffer-input {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.buffer-input input {
+    width: 80px;
+    padding: 8px 12px;
+    border: 2px solid #667eea;
+    border-radius: 6px;
+    font-size: 1em;
+}
+
+.buffer-input input:focus {
+    outline: none;
+    border-color: #764ba2;
+}
+
+.summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.summary-item label {
+    font-size: 0.9em;
+    color: #666;
+    font-weight: 500;
+}
+
+.summary-item span {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #333;
+}
+
+.summary-item.highlight {
+    background: #667eea;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.summary-item.highlight label {
+    color: white;
+}
+
+.summary-item.highlight span {
+    color: white;
+}
+
+.summary-item .with-extra-label {
+    font-size: 0.75em;
+    margin-top: 8px;
+    opacity: 0.9;
+}
+
+.summary-item .with-extra-value {
+    font-size: 1.2em;
+    margin-top: 2px;
+}
+
+.holiday-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.holiday-table th {
+    background: #667eea;
+    color: white;
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+}
+
+.holiday-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.holiday-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.holiday-table tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+.holiday-table tbody tr:nth-child(even):hover {
+    background: #f0f0f0;
+}
+
+.month-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.earned {
+    color: #10b981;
+    font-weight: 500;
+}
+
+.earned-total {
+    color: #10b981;
+    font-weight: 500;
+}
+
+.earned-with-extra {
+    color: #059669;
+    font-weight: 500;
+}
+
+.balance {
+    font-weight: 600;
+}
+
+.balance.positive {
+    color: #10b981;
+}
+
+.balance.negative {
+    color: #ef4444;
+}
+
+.balance-with-extra {
+    font-weight: 600;
+}
+
+.balance-with-extra.positive {
+    color: #10b981;
+}
+
+.balance-with-extra.negative {
+    color: #ef4444;
+}
+
+.extra-used {
+    color: #f59e0b;
+    font-weight: 500;
+}
+
+.extra-remaining {
+    color: #8b5cf6;
+    font-weight: 500;
+}
+
+input[type="number"] {
+    width: 100%;
+    padding: 8px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 1em;
+    transition: border-color 0.3s;
+}
+
+input[type="number"]:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.reset-btn {
+    width: 100%;
+    padding: 15px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.reset-btn:hover {
+    background: #dc2626;
+}
+
+.reset-btn:active {
+    transform: scale(0.98);
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 20px;
+    }
+    
+    h1 {
+        font-size: 1.8em;
+    }
+    
+    .holiday-table {
+        font-size: 0.9em;
+    }
+    
+    .holiday-table th,
+    .holiday-table td {
+        padding: 10px 8px;
+    }
+}
