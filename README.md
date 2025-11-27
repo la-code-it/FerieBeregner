@@ -110,7 +110,7 @@ docker rmi ferie-beregner
 ## Environment Variables
 
 - `PORT` - Port number for the server (default: 3000)
-
+ 
 ## Database
 
 The application uses SQLite to store:
