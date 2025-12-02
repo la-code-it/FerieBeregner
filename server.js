@@ -2,9 +2,16 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 const db = require('./database');
+const https = require('https');
+const http = require('http');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+// HTTPS configuration for production
+const useHTTPS = NODE_ENV === 'production' && process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH;
 
 // Middleware
 app.use(express.json());
@@ -16,7 +23,7 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: { 
-        secure: false, // Set to true if using HTTPS
+        secure: useHTTPS, // Set to true when using HTTPS
         maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     }
 }));
@@ -212,6 +219,18 @@ app.post('/api/seasons/:id/monthly', requireAuth, async (req, res) => {
 });
 
 // Start the server
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Ferie Beregner is running on http://localhost:${PORT}`);
-});
+if (useHTTPS) {
+    // Load SSL certificates
+    const httpsOptions = {
+        key: fs.readFileSync(process.env.SSL_KEY_PATH),
+        cert: fs.readFileSync(process.env.SSL_CERT_PATH)
+    };
+    
+    https.createServer(httpsOptions, app).listen(PORT, '0.0.0.0', () => {
+        console.log(`Ferie Beregner is running on https://localhost:${PORT} (Production mode with SSL)`);
+    });
+} else {
+    http.createServer(app).listen(PORT, '0.0.0.0', () => {
+        console.log(`Ferie Beregner is running on http://localhost:${PORT} (${NODE_ENV} mode)`);
+    });
+}

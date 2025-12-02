@@ -110,6 +110,32 @@ docker rmi ferie-beregner
 ## Environment Variables
 
 - `PORT` - Port number for the server (default: 3000)
+- `NODE_ENV` - Environment mode: `development` or `production` (default: development)
+- `SESSION_SECRET` - Secret key for session encryption (change in production)
+- `SSL_CERT_PATH` - Path to SSL certificate file (required for production HTTPS)
+- `SSL_KEY_PATH` - Path to SSL private key file (required for production HTTPS)
+
+### Production Mode with HTTPS
+
+To run in production mode with HTTPS, set the following environment variables:
+
+```bash
+NODE_ENV=production
+SSL_CERT_PATH=/path/to/certificate.crt
+SSL_KEY_PATH=/path/to/private.key
+SESSION_SECRET=your-secure-secret-key
+```
+
+Example Docker run command with HTTPS:
+```bash
+docker run -d -p 443:3000 \
+  -e NODE_ENV=production \
+  -e SSL_CERT_PATH=/app/certs/certificate.crt \
+  -e SSL_KEY_PATH=/app/certs/private.key \
+  -e SESSION_SECRET=your-secure-secret-key \
+  -v /path/to/your/certs:/app/certs \
+  --name ferie-app ferie-beregner
+```
  
 ## Database
 
