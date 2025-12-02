@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const session = require('express-session');
 const db = require('./database');
 
 const app = express();
@@ -9,6 +10,25 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(__dirname));
 
+// Session middleware
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'ferie-beregner-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+        secure: false, // Set to true if using HTTPS
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    }
+}));
+
+// Authentication middleware
+const requireAuth = (req, res, next) => {
+    if (!req.session.userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+    next();
+};
+
 // Route for the main page
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
@@ -16,10 +36,66 @@ app.get('/', (req, res) => {
 
 // API Routes
 
-// Get all seasons
-app.get('/api/seasons', async (req, res) => {
+// Authentication endpoints
+app.post('/api/auth/login', async (req, res) => {
     try {
-        const seasons = await db.getAllSeasons();
+        const { username } = req.body;
+        
+        if (!username || username.trim().length === 0) {
+            return res.status(400).json({ error: 'Username is required' });
+        }
+
+        // Check if user exists
+        let user = await db.getUserByUsername(username);
+        
+        // If user doesn't exist, create new user
+        if (!user) {
+            user = await db.createUser(username);
+        }
+
+        // Set session
+        req.session.userId = user.id;
+        req.session.username = user.username;
+
+        res.json({ 
+            success: true, 
+            user: { 
+                id: user.id, 
+                username: user.username 
+            } 
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to logout' });
+        }
+        res.json({ success: true });
+    });
+});
+
+app.get('/api/auth/status', (req, res) => {
+    if (req.session.userId) {
+        res.json({ 
+            authenticated: true, 
+            user: { 
+                id: req.session.userId, 
+                username: req.session.username 
+            } 
+        });
+    } else {
+        res.json({ authenticated: false });
+    }
+});
+
+// Get all seasons
+app.get('/api/seasons', requireAuth, async (req, res) => {
+    try {
+        const seasons = await db.getAllSeasons(req.session.userId);
         res.json(seasons);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -27,11 +103,15 @@ app.get('/api/seasons', async (req, res) => {
 });
 
 // Get a specific season
-app.get('/api/seasons/:id', async (req, res) => {
+app.get('/api/seasons/:id', requireAuth, async (req, res) => {
     try {
         const season = await db.getSeason(req.params.id);
         if (!season) {
             return res.status(404).json({ error: 'Season not found' });
+        }
+        // Verify season belongs to user
+        if (season.user_id !== req.session.userId) {
+            return res.status(403).json({ error: 'Access denied' });
         }
         res.json(season);
     } catch (error) {
@@ -40,13 +120,20 @@ app.get('/api/seasons/:id', async (req, res) => {
 });
 
 // Create a new season
-app.post('/api/seasons', async (req, res) => {
+app.post('/api/seasons', requireAuth, async (req, res) => {
     try {
-        const { name, start_year, buffer } = req.body;
+        const { name, start_year, buffer, earned_per_month, extra_holidays } = req.body;
         if (!name || !start_year) {
             return res.status(400).json({ error: 'Name and start_year are required' });
         }
-        const season = await db.createSeason(name, start_year, buffer || 0);
+        const season = await db.createSeason(
+            req.session.userId, 
+            name, 
+            start_year, 
+            buffer || 0,
+            earned_per_month || 2.08,
+            extra_holidays || 5
+        );
         res.status(201).json(season);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -54,10 +141,20 @@ app.post('/api/seasons', async (req, res) => {
 });
 
 // Update season buffer
-app.put('/api/seasons/:id', async (req, res) => {
+app.put('/api/seasons/:id', requireAuth, async (req, res) => {
     try {
-        const { buffer } = req.body;
-        const result = await db.updateSeason(req.params.id, buffer);
+        const { buffer, earned_per_month, extra_holidays } = req.body;
+        // Verify season belongs to user
+        const season = await db.getSeason(req.params.id);
+        if (!season || season.user_id !== req.session.userId) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const result = await db.updateSeason(
+            req.params.id, 
+            buffer !== undefined ? buffer : season.buffer,
+            earned_per_month !== undefined ? earned_per_month : season.earned_per_month,
+            extra_holidays !== undefined ? extra_holidays : season.extra_holidays
+        );
         res.json(result);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -65,8 +162,13 @@ app.put('/api/seasons/:id', async (req, res) => {
 });
 
 // Delete a season
-app.delete('/api/seasons/:id', async (req, res) => {
+app.delete('/api/seasons/:id', requireAuth, async (req, res) => {
     try {
+        // Verify season belongs to user
+        const season = await db.getSeason(req.params.id);
+        if (!season || season.user_id !== req.session.userId) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
         const result = await db.deleteSeason(req.params.id);
         res.json(result);
     } catch (error) {
@@ -75,8 +177,13 @@ app.delete('/api/seasons/:id', async (req, res) => {
 });
 
 // Get monthly data for a season
-app.get('/api/seasons/:id/monthly', async (req, res) => {
+app.get('/api/seasons/:id/monthly', requireAuth, async (req, res) => {
     try {
+        // Verify season belongs to user
+        const season = await db.getSeason(req.params.id);
+        if (!season || season.user_id !== req.session.userId) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
         const data = await db.getMonthlyData(req.params.id);
         res.json(data);
     } catch (error) {
@@ -85,8 +192,13 @@ app.get('/api/seasons/:id/monthly', async (req, res) => {
 });
 
 // Save monthly data
-app.post('/api/seasons/:id/monthly', async (req, res) => {
+app.post('/api/seasons/:id/monthly', requireAuth, async (req, res) => {
     try {
+        // Verify season belongs to user
+        const season = await db.getSeason(req.params.id);
+        if (!season || season.user_id !== req.session.userId) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
         const { month_index, planned_holidays } = req.body;
         const result = await db.saveMonthlyData(
             req.params.id,

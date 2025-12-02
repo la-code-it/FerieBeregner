@@ -5,16 +5,109 @@ const months = [
     'Maj', 'Juni', 'Juli', 'August'
 ];
 
-const EARNED_PER_MONTH = 2.08;
-const EXTRA_HOLIDAYS = 5;
+const DEFAULT_EARNED_PER_MONTH = 2.08;
+const DEFAULT_EXTRA_HOLIDAYS = 5;
 
 let currentSeasonId = null;
 let allSeasons = []; // Store all seasons for validation
+let currentUser = null;
 
 // Initialize the application
-function init() {
+async function init() {
     generateMonthsTable();
-    loadSeasons();
+    
+    // Check authentication status
+    try {
+        const response = await fetch('/api/auth/status');
+        const data = await response.json();
+        
+        if (data.authenticated) {
+            currentUser = data.user;
+            showMainApp();
+            await loadSeasons();
+        } else {
+            showLoginModal();
+        }
+    } catch (error) {
+        console.error('Error checking auth status:', error);
+        showLoginModal();
+    }
+}
+
+// Show login modal
+function showLoginModal() {
+    document.getElementById('loginModal').classList.remove('hidden');
+    document.getElementById('mainContainer').classList.add('hidden');
+    document.getElementById('usernameInput').focus();
+}
+
+// Show main app
+function showMainApp() {
+    document.getElementById('loginModal').classList.add('hidden');
+    document.getElementById('mainContainer').classList.remove('hidden');
+    document.getElementById('currentUsername').textContent = currentUser.username;
+}
+
+// Handle login
+async function handleLogin() {
+    const username = document.getElementById('usernameInput').value.trim();
+    const errorElement = document.getElementById('loginError');
+    
+    errorElement.textContent = '';
+    errorElement.classList.remove('show');
+    
+    if (!username) {
+        errorElement.textContent = 'Indtast venligst et brugernavn';
+        errorElement.classList.add('show');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            currentUser = data.user;
+            showMainApp();
+            await loadSeasons();
+        } else {
+            errorElement.textContent = data.error || 'Login fejlede';
+            errorElement.classList.add('show');
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        errorElement.textContent = 'Der opstod en fejl. Prøv igen.';
+        errorElement.classList.add('show');
+    }
+}
+
+// Handle logout
+async function handleLogout() {
+    try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        currentUser = null;
+        currentSeasonId = null;
+        allSeasons = [];
+        clearData();
+        showLoginModal();
+        document.getElementById('usernameInput').value = '';
+    } catch (error) {
+        console.error('Logout error:', error);
+    }
+}
+
+// Handle Enter key in login input
+function handleLoginKeypress(event) {
+    if (event.key === 'Enter') {
+        handleLogin();
+    }
 }
 
 // Load all seasons from database
@@ -67,8 +160,10 @@ async function loadSeason() {
         const seasonResponse = await fetch(`/api/seasons/${currentSeasonId}`);
         const season = await seasonResponse.json();
         
-        // Set buffer
+        // Set buffer and settings
         document.getElementById('extraBuffer').value = season.buffer || 0;
+        document.getElementById('earnedPerMonth').value = season.earned_per_month || DEFAULT_EARNED_PER_MONTH;
+        document.getElementById('extraHolidaysInput').value = season.extra_holidays || DEFAULT_EXTRA_HOLIDAYS;
         
         // Load monthly data
         const monthlyResponse = await fetch(`/api/seasons/${currentSeasonId}/monthly`);
@@ -242,6 +337,8 @@ async function confirmDelete() {
 // Clear all data
 function clearData() {
     document.getElementById('extraBuffer').value = 0;
+    document.getElementById('earnedPerMonth').value = DEFAULT_EARNED_PER_MONTH;
+    document.getElementById('extraHolidaysInput').value = DEFAULT_EXTRA_HOLIDAYS;
     months.forEach((month, index) => {
         document.getElementById(`month-${index}`).value = 0;
     });
@@ -257,7 +354,7 @@ function generateMonthsTable() {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td class="month-name">${month}</td>
-            <td class="earned">${EARNED_PER_MONTH.toFixed(2)}</td>
+            <td class="earned" id="earned-month-${index}">0.00</td>
             <td class="earned-total" id="earned-total-${index}">0.00</td>
             <td class="earned-with-extra" id="earned-with-extra-${index}">0.00</td>
             <td>
@@ -284,12 +381,25 @@ function generateMonthsTable() {
 function calculate() {
     const bufferInput = document.getElementById('extraBuffer');
     const buffer = parseFloat(bufferInput.value) || 0;
+    
+    const earnedPerMonthInput = document.getElementById('earnedPerMonth');
+    const earnedValue = parseFloat(earnedPerMonthInput.value);
+    const EARNED_PER_MONTH = isNaN(earnedValue) ? DEFAULT_EARNED_PER_MONTH : earnedValue;
+    
+    const extraHolidaysInput = document.getElementById('extraHolidaysInput');
+    const extraValue = parseFloat(extraHolidaysInput.value);
+    const EXTRA_HOLIDAYS = isNaN(extraValue) ? DEFAULT_EXTRA_HOLIDAYS : extraValue;
+    
     let accumulatedHolidays = buffer;
     let extraHolidaysRemaining = EXTRA_HOLIDAYS;
     let runningBalance = buffer; // Track actual balance as we go
     let totalUsedForSummary = 0;
     
     months.forEach((month, index) => {
+        // Update earned per month display
+        const earnedMonthElement = document.getElementById(`earned-month-${index}`);
+        earnedMonthElement.textContent = EARNED_PER_MONTH.toFixed(2);
+        
         // Add earned holidays for this month
         accumulatedHolidays += EARNED_PER_MONTH;
         runningBalance += EARNED_PER_MONTH;
@@ -374,14 +484,25 @@ async function saveData() {
     if (!currentSeasonId) return;
     
     try {
-        // Update buffer
+        // Update buffer and settings
         const buffer = parseFloat(document.getElementById('extraBuffer').value) || 0;
+        
+        const earnedValue = parseFloat(document.getElementById('earnedPerMonth').value);
+        const earnedPerMonth = isNaN(earnedValue) ? DEFAULT_EARNED_PER_MONTH : earnedValue;
+        
+        const extraValue = parseFloat(document.getElementById('extraHolidaysInput').value);
+        const extraHolidays = isNaN(extraValue) ? DEFAULT_EXTRA_HOLIDAYS : extraValue;
+        
         await fetch(`/api/seasons/${currentSeasonId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ buffer })
+            body: JSON.stringify({ 
+                buffer,
+                earned_per_month: earnedPerMonth,
+                extra_holidays: extraHolidays
+            })
         });
         
         // Save monthly data

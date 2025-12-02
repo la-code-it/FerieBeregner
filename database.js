@@ -10,14 +10,27 @@ db.run('PRAGMA foreign_keys = ON');
 
 // Create tables
 db.serialize(() => {
+    // Table for users
+    db.run(`
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
     // Table for holiday seasons
     db.run(`
         CREATE TABLE IF NOT EXISTS seasons (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
             name TEXT NOT NULL,
             start_year INTEGER NOT NULL,
             buffer REAL DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            earned_per_month REAL DEFAULT 2.08,
+            extra_holidays REAL DEFAULT 5,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     `);
 
@@ -36,13 +49,40 @@ db.serialize(() => {
 
 // Database functions
 const database = {
-    // Get all seasons
-    getAllSeasons: () => {
+    // User functions
+    getUserByUsername: (username) => {
         return new Promise((resolve, reject) => {
-            db.all('SELECT * FROM seasons ORDER BY created_at DESC', [], (err, rows) => {
+            db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
                 if (err) reject(err);
-                else resolve(rows);
+                else resolve(row);
             });
+        });
+    },
+
+    createUser: (username) => {
+        return new Promise((resolve, reject) => {
+            db.run(
+                'INSERT INTO users (username) VALUES (?)',
+                [username],
+                function(err) {
+                    if (err) reject(err);
+                    else resolve({ id: this.lastID, username });
+                }
+            );
+        });
+    },
+
+    // Get all seasons for a user
+    getAllSeasons: (userId) => {
+        return new Promise((resolve, reject) => {
+            db.all(
+                'SELECT * FROM seasons WHERE user_id = ? ORDER BY created_at DESC',
+                [userId],
+                (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows);
+                }
+            );
         });
     },
 
@@ -57,25 +97,33 @@ const database = {
     },
 
     // Create a new season
-    createSeason: (name, startYear, buffer = 0) => {
+    createSeason: (userId, name, startYear, buffer = 0, earnedPerMonth = 2.08, extraHolidays = 5) => {
         return new Promise((resolve, reject) => {
             db.run(
-                'INSERT INTO seasons (name, start_year, buffer) VALUES (?, ?, ?)',
-                [name, startYear, buffer],
+                'INSERT INTO seasons (user_id, name, start_year, buffer, earned_per_month, extra_holidays) VALUES (?, ?, ?, ?, ?, ?)',
+                [userId, name, startYear, buffer, earnedPerMonth, extraHolidays],
                 function(err) {
                     if (err) reject(err);
-                    else resolve({ id: this.lastID, name, start_year: startYear, buffer });
+                    else resolve({ 
+                        id: this.lastID, 
+                        user_id: userId, 
+                        name, 
+                        start_year: startYear, 
+                        buffer,
+                        earned_per_month: earnedPerMonth,
+                        extra_holidays: extraHolidays
+                    });
                 }
             );
         });
     },
 
     // Update season
-    updateSeason: (id, buffer) => {
+    updateSeason: (id, buffer, earnedPerMonth, extraHolidays) => {
         return new Promise((resolve, reject) => {
             db.run(
-                'UPDATE seasons SET buffer = ? WHERE id = ?',
-                [buffer, id],
+                'UPDATE seasons SET buffer = ?, earned_per_month = ?, extra_holidays = ? WHERE id = ?',
+                [buffer, earnedPerMonth, extraHolidays, id],
                 function(err) {
                     if (err) reject(err);
                     else resolve({ changes: this.changes });
