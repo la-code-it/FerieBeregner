@@ -13,8 +13,10 @@ RUN npm install --production
 # Copy application files
 COPY . .
 
-# Expose port 3000
+# Expose port 3000, 80 and 443
 EXPOSE 3000
+EXPOSE 80
+EXPOSE 443
 
 # Set environment variable
 ENV PORT=3000
