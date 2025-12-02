@@ -6,3 +6,6 @@ npm-debug.log
 .DS_Store
 .env
 holidays.db
+greenlock.d/accounts
+greenlock.d/certs
+greenlock.d/live

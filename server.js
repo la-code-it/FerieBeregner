@@ -11,7 +11,8 @@ const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // HTTPS configuration for production
-const useHTTPS = NODE_ENV === 'production' && process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH;
+const useLetsEncrypt = NODE_ENV === 'production' && process.env.DOMAIN && process.env.MAINTAINER_EMAIL;
+const useManualHTTPS = NODE_ENV === 'production' && process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH && !useLetsEncrypt;
 
 // Middleware
 app.use(express.json());
@@ -23,7 +24,7 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: { 
-        secure: useHTTPS, // Set to true when using HTTPS
+        secure: useLetsEncrypt || useManualHTTPS, // Set to true when using HTTPS
         maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     }
 }));
@@ -219,15 +220,29 @@ app.post('/api/seasons/:id/monthly', requireAuth, async (req, res) => {
 });
 
 // Start the server
-if (useHTTPS) {
-    // Load SSL certificates
+if (useLetsEncrypt) {
+    // Use Greenlock Express for automatic Let's Encrypt certificates
+    require('greenlock-express')
+        .init({
+            packageRoot: __dirname,
+            configDir: './greenlock.d',
+            maintainerEmail: process.env.MAINTAINER_EMAIL,
+            cluster: false
+        })
+        .ready((glx) => {
+            // Serve the app with HTTPS
+            glx.serveApp(app);
+            console.log(`Ferie Beregner is running with Let's Encrypt SSL on https://${process.env.DOMAIN}`);
+        });
+} else if (useManualHTTPS) {
+    // Load SSL certificates manually
     const httpsOptions = {
         key: fs.readFileSync(process.env.SSL_KEY_PATH),
         cert: fs.readFileSync(process.env.SSL_CERT_PATH)
     };
     
     https.createServer(httpsOptions, app).listen(PORT, '0.0.0.0', () => {
-        console.log(`Ferie Beregner is running on https://localhost:${PORT} (Production mode with SSL)`);
+        console.log(`Ferie Beregner is running on https://localhost:${PORT} (Production mode with manual SSL)`);
     });
 } else {
     http.createServer(app).listen(PORT, '0.0.0.0', () => {

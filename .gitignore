@@ -4,6 +4,11 @@ node_modules/
 # Database
 holidays.db
 
+# Greenlock certificates and account data
+greenlock.d/accounts/
+greenlock.d/certs/
+greenlock.d/live/
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

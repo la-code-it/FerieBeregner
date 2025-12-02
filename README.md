@@ -112,12 +112,43 @@ docker rmi ferie-beregner
 - `PORT` - Port number for the server (default: 3000)
 - `NODE_ENV` - Environment mode: `development` or `production` (default: development)
 - `SESSION_SECRET` - Secret key for session encryption (change in production)
-- `SSL_CERT_PATH` - Path to SSL certificate file (required for production HTTPS)
-- `SSL_KEY_PATH` - Path to SSL private key file (required for production HTTPS)
 
-### Production Mode with HTTPS
+### Production Mode with Let's Encrypt (Automatic SSL)
 
-To run in production mode with HTTPS, set the following environment variables:
+To run in production mode with automatic Let's Encrypt SSL certificates:
+
+```bash
+NODE_ENV=production
+DOMAIN=ferie.example.com
+MAINTAINER_EMAIL=your-email@example.com
+SESSION_SECRET=your-secure-secret-key
+```
+
+The server will automatically:
+- Request SSL certificates from Let's Encrypt
+- Renew certificates before they expire
+- Handle both HTTP (port 80) and HTTPS (port 443)
+- Redirect HTTP traffic to HTTPS
+
+Example Docker run command with Let's Encrypt:
+```bash
+docker run -d -p 80:80 -p 443:443 \
+  -e NODE_ENV=production \
+  -e DOMAIN=ferie.example.com \
+  -e MAINTAINER_EMAIL=your-email@example.com \
+  -e SESSION_SECRET=your-secure-secret-key \
+  -v $(pwd)/greenlock.d:/app/greenlock.d \
+  --name ferie-app ferie-beregner
+```
+
+**Important**: Make sure your domain `ferie.example.com` points to your server's IP address before starting.
+
+### Production Mode with Manual SSL Certificates
+
+To run in production mode with manual SSL certificates:
+
+- `SSL_CERT_PATH` - Path to SSL certificate file (required for manual HTTPS)
+- `SSL_KEY_PATH` - Path to SSL private key file (required for manual HTTPS)
 
 ```bash
 NODE_ENV=production
@@ -126,7 +157,7 @@ SSL_KEY_PATH=/path/to/private.key
 SESSION_SECRET=your-secure-secret-key
 ```
 
-Example Docker run command with HTTPS:
+Example Docker run command with manual HTTPS:
 ```bash
 docker run -d -p 443:3000 \
   -e NODE_ENV=production \
