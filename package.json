@@ -15,9 +15,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2",
-    "express-session": "^1.17.3",
-    "sqlite3": "^5.1.6",
-    "greenlock-express": "^4.0.3"
+    "express": "^4.22.1",
+    "express-session": "^1.18.2",
+    "greenlock-express": "^4.0.3",
+    "sqlite3": "^5.1.7"
   }
 }
